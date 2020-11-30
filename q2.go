@@ -10,7 +10,7 @@ import (
 	"Math/rand"
 	"strconv"
 )
-
+// Test
 /*
 --- Task ---
 Dentist will check that there are no high-prioirty patients before starting on a low priorty one
