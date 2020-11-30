@@ -6,10 +6,11 @@ Comment for part b
 
 import (
 	"fmt"
-	"time"
-	"Math/rand"
+	"math/rand"
 	"strconv"
+	"time"
 )
+
 // Test
 /*
 --- Task ---
@@ -19,9 +20,9 @@ Move a patient from lwait to hwait whenever m milliseconds have passed since the
  from lwait
 
 */
-func dentist(hwait chan chan int, lwait <-chan chan int, dent <-chan chan int) {
-	highQueue := make(chan chan int, 10)
-	lowQueue := make(chan chan int, 10)
+func dentist(hwait chan chan int, lwait <-chan chan int, dent <-chan chan int, comms chan<- string) {
+	highQueue := make(chan chan int, 20)
+	lowQueue := make(chan chan int, 20)
 
 	// Add people into their corresponding queue
 	go func() {
@@ -29,72 +30,88 @@ func dentist(hwait chan chan int, lwait <-chan chan int, dent <-chan chan int) {
 			timer := time.NewTimer(200 * time.Millisecond)
 
 			select {
-			case highPatient := <-hwait:
+			case highPatient := <-hwait: // Priority needed to check for timeouts
 				highQueue <- highPatient
-				
-			case <-timer.C:
+				comms <- "Dentist: added high patient to high queue"
+
+			case <-timer.C: // If time has passed, check for low (so they could be treated instantly)
 				select {
 				case lowPatient := <-lwait:
 					lowQueue <- lowPatient
-				default:
-					wakeMeUpPatient := <- dent // Dentist to fall asleep
+					comms <- "Dentist: added low patient to low queue"
+				default: // If there is nobdoy waiting fall asleep
+					comms <- "Dentist: Falling asleep and waiting to be woken up"
+					wakeMeUpPatient := <-dent
 					wakeMeUpPatient <- -200
 				}
 			}
 		}
 	}()
 
-	// Treat them!
+	// 2 Queues, one with high that should be FIFO and done first
+	// One with low who should be FIFO and done when high is done
+
+	// Treatment
 	go func() {
 		for {
-			patientChan:= make (chan chan int)
-
 			select {
-			case patientChan = <- highQueue:
-				patientChan <- -100
-			default patientChan = <- lowQueue:
-				patientChan <- - 100
-			} 	
-
-			treatmentTime := rand.Intn(6-1) + 1
-			time.Sleep(time.Duration(treatmentTime) * time.Second)
-			patientChan <- -101
+			case highPatient := <-highQueue:
+				// Treat high Patient
+				highPatient <- -100
+				treatmentTime := rand.Intn(6-1) + 1
+				comms <- "  Dentist: Treating a patient for " + strconv.Itoa(treatmentTime) + " seconds"
+				time.Sleep(time.Duration(treatmentTime) * time.Second)
+				highPatient <- -101
+			case lowPatient := <-lowQueue:
+				// Treat low Patient
+				lowPatient <- -100
+				treatmentTime := rand.Intn(6-1) + 1
+				comms <- "  Dentist: Treating a patient for " + strconv.Itoa(treatmentTime) + " seconds"
+				time.Sleep(time.Duration(treatmentTime) * time.Second)
+				lowPatient <- -101
+			}
 		}
 	}()
 }
 
 // Patient must also work for Q1
-func patient(wait chan<- chan int, dent chan<- chan int, id int) {
+func patient(wait chan<- chan int, dent chan<- chan int, id int, comms chan<- string) {
 	self := make(chan int)
+	comms <- "Patient " + strconv.Itoa(id) + ": Waking up dentist"
 	dent <- self // wake up the dentist if they were asleep
-	<- dent // Accept confirmation that dentist is awake
 
-	wait <- self // Hey, I'd like to be treated
-	go func(){
-		for sleepMessage := range self{
-			if sleepMessage == -101{
-				wakeUpMessage := <- self
-				fmt.PrintlnI("Patient " + strconv.Itoa(id) + " done")
-			}
-		}
+	comms <- "Patient " + strconv.Itoa(id) + ": Waiting for treament signal"
+
+	for treatSignal := range self { // -100 has been received
+		comms <- "Patient " + strconv.Itoa(id) + " received " + strconv.Itoa(treatSignal)
+		<-self // Wait for second signal
+		comms <- "Patient " + strconv.Itoa(id) + ": Done"
 	}
 
 }
 
 func main() {
+	comms := make(chan string, 100)
+
+	go func() {
+		for message := range comms {
+			fmt.Println(message)
+		}
+	}()
+
 	dent := make(chan chan int)
 	hwait := make(chan chan int, 100)
 	lwait := make(chan chan int, 5)
-	go dentist(hwait, lwait, dent)
+	go dentist(hwait, lwait, dent, comms)
 	high := 10
 	low := 3
 
 	for i := low; i < high; i++ {
-		go patient(hwait, dent, i)
+		go patient(hwait, dent, i, comms)
 	}
 
 	for i := 0; i < low; i++ {
-		go patient(lwait, dent, i)
+		go patient(lwait, dent, i, comms)
 	}
 
 	time.Sleep(50 * time.Second)
