@@ -86,7 +86,7 @@ func patient(wait chan<- chan int, dent chan<- chan int, id int, comms chan<- st
 		comms <- "Patient " + strconv.Itoa(id) + " received " + strconv.Itoa(treatSignal)
 		<-self // Wait for second signal
 		comms <- "Patient " + strconv.Itoa(id) + ": Done"
-	}
+	} //test
 
 }
 
