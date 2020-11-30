@@ -27,21 +27,21 @@ func dentist(hwait chan chan int, lwait <-chan chan int, dent <-chan chan int, c
 	// Add people into their corresponding queue
 	go func() {
 		for {
+			comms <- "Dentist asleep until woken up"
+			<-dent
 			timer := time.NewTimer(200 * time.Millisecond)
-
 			select {
 
-			case <-hwait:
-				comms <- "Dentist: taking on a high priority patient #"
+			case highPatient := <-hwait:
+				comms <- "Dentist: taking on a HIGH priority patient"
+				highQueue <- highPatient
 			case <-timer.C:
-				comms <- "Dentist: In timer case"
 
 				select {
-				case <-lwait:
-					comms <- "Dentist: taking on a low priority patient"
+				case lowPatient := <-lwait:
+					comms <- "Dentist: taking on a LOW priority patient"
+					lowQueue <- lowPatient
 				default:
-					comms <- "Dentist should fall asleep"
-					<-dent
 				}
 			}
 		}
@@ -82,14 +82,14 @@ func dentist(hwait chan chan int, lwait <-chan chan int, dent <-chan chan int, c
 				// Treat high Patient
 				highPatient <- -100
 				treatmentTime := rand.Intn(6-1) + 1
-				comms <- "  Dentist: Treating a patient for " + strconv.Itoa(treatmentTime) + " seconds"
+				comms <- "  Dentist: Treating a HIGH patient for " + strconv.Itoa(treatmentTime) + " seconds"
 				time.Sleep(time.Duration(treatmentTime) * time.Second)
 				highPatient <- -101
 			case lowPatient := <-lowQueue:
 				// Treat low Patient
 				lowPatient <- -100
 				treatmentTime := rand.Intn(6-1) + 1
-				comms <- "  Dentist: Treating a patient for " + strconv.Itoa(treatmentTime) + " seconds"
+				comms <- "  Dentist: Treating a LOW patient for " + strconv.Itoa(treatmentTime) + " seconds"
 				time.Sleep(time.Duration(treatmentTime) * time.Second)
 				lowPatient <- -101
 			}
@@ -100,9 +100,8 @@ func dentist(hwait chan chan int, lwait <-chan chan int, dent <-chan chan int, c
 // Patient must also work for Q1
 func patient(wait chan<- chan int, dent chan<- chan int, id int, comms chan<- string) {
 	self := make(chan int)
-	// comms <- "Patient " + strconv.Itoa(id) + ": Waking up dentist"
-	// dent <- self // wake up the dentist if they were asleep
-	wait <- self
+	dent <- self // wake up the dentist if they were asleep
+	wait <- self // add myself to relevant queue
 	comms <- "Patient " + strconv.Itoa(id) + ": Waiting for treament signal"
 
 	for treatSignal := range self { // -100 has been received
