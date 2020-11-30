@@ -58,12 +58,9 @@ func dentist(wait <-chan chan int, dent <-chan chan int, comms chan<- string) {
 	go func() {
 		for {
 			patientChan := <-wait
-			// patientNumber := <-patientChan
 
-			if busy {
-				patientChan <- -201 // Send rejection signal to send them to sleep
-				comms <- "  Dentist: Patient admitted to waiting room"
-			}
+			patientChan <- -201 // Send rejection signal to send them to sleep
+			comms <- "  Dentist: Patient admitted to waiting room"
 
 			admissionQueue <- patientChan // Add them to our queue
 		}
@@ -132,7 +129,6 @@ func main() {
 	}()
 
 	// channel of size n
-	// func main() {
 	go dentist(wait, dent, comms)
 	time.Sleep(3 * time.Second)
 	comms <- "\n"
@@ -142,5 +138,5 @@ func main() {
 		comms <- "\n"
 	}
 	comms <- "Main: Everything initialised"
-	time.Sleep(20 * time.Second)
+	time.Sleep(1 * time.Second)
 }
