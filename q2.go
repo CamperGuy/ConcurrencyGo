@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 	"Math/rand"
+	"strconv"
 )
 
 /*
@@ -22,23 +23,23 @@ func dentist(hwait chan chan int, lwait <-chan chan int, dent <-chan chan int) {
 	highQueue := make(chan chan int, 10)
 	lowQueue := make(chan chan int, 10)
 
-	timer := time.NewTimer(200 * time.Millisecond)
-
 	// Add people into their corresponding queue
 	go func() {
 		for {
+			timer := time.NewTimer(200 * time.Millisecond)
+
 			select {
 			case highPatient := <-hwait:
 				highQueue <- highPatient
-
+				
 			case <-timer.C:
 				select {
 				case lowPatient := <-lwait:
 					lowQueue <- lowPatient
 				default:
-					// Dentist to fall asleep
-					wakeMeUpPatient := <- dent
+					wakeMeUpPatient := <- dent // Dentist to fall asleep
 					wakeMeUpPatient <- -200
+				}
 			}
 		}
 	}()
@@ -51,7 +52,7 @@ func dentist(hwait chan chan int, lwait <-chan chan int, dent <-chan chan int) {
 			select {
 			case patientChan = <- highQueue:
 				patientChan <- -100
-			default: patientChan = <- lowQueue:
+			default patientChan = <- lowQueue:
 				patientChan <- - 100
 			} 	
 
@@ -59,7 +60,7 @@ func dentist(hwait chan chan int, lwait <-chan chan int, dent <-chan chan int) {
 			time.Sleep(time.Duration(treatmentTime) * time.Second)
 			patientChan <- -101
 		}
-	}
+	}()
 }
 
 // Patient must also work for Q1
@@ -70,8 +71,11 @@ func patient(wait chan<- chan int, dent chan<- chan int, id int) {
 
 	wait <- self // Hey, I'd like to be treated
 	go func(){
-		for response := range self{
-
+		for sleepMessage := range self{
+			if sleepMessage == -101{
+				wakeUpMessage := <- self
+				fmt.PrintlnI("Patient " + strconv.Itoa(id) + " done")
+			}
 		}
 	}
 
