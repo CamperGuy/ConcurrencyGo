@@ -21,8 +21,8 @@ Treatment should take a random time
 */
 
 import (
-	"Math/rand"
 	"fmt"
+	"math/rand"
 	"strconv"
 	"time"
 )
