@@ -29,20 +29,14 @@ func dentist(hwait chan chan int, lwait <-chan chan int, dent <-chan chan int, c
 		for {
 			comms <- "Dentist asleep until woken up"
 			<-dent
-			timer := time.NewTimer(200 * time.Millisecond)
-			select {
 
+			select {
 			case highPatient := <-hwait:
 				comms <- "Dentist: taking on a HIGH priority patient"
 				highQueue <- highPatient
-			case <-timer.C:
-
-				select {
-				case lowPatient := <-lwait:
-					comms <- "Dentist: taking on a LOW priority patient"
-					lowQueue <- lowPatient
-				default:
-				}
+			case lowPatient := <-lwait:
+				comms <- "Dentist: taking on a LOW priority patient"
+				lowQueue <- lowPatient
 			}
 		}
 
@@ -77,6 +71,8 @@ func dentist(hwait chan chan int, lwait <-chan chan int, dent <-chan chan int, c
 	// Treatment
 	go func() {
 		for {
+			timer := time.NewTimer(200 * time.Millisecond)
+
 			select {
 			case highPatient := <-highQueue:
 				// Treat high Patient
@@ -85,7 +81,9 @@ func dentist(hwait chan chan int, lwait <-chan chan int, dent <-chan chan int, c
 				comms <- "  Dentist: Treating a HIGH patient for " + strconv.Itoa(treatmentTime) + " seconds"
 				time.Sleep(time.Duration(treatmentTime) * time.Second)
 				highPatient <- -101
-			case lowPatient := <-lowQueue:
+
+			case <-timer.C:
+				lowPatient := <-lowQueue
 				// Treat low Patient
 				lowPatient <- -100
 				treatmentTime := rand.Intn(6-1) + 1
