@@ -72,5 +72,5 @@ func main() {
 		time.Sleep(1 * time.Second)
 	}
 	comms <- "Main: Everything initialised"
-	time.Sleep(30 * time.Second)
+	time.Sleep(20 * time.Second)
 }
