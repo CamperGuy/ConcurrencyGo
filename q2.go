@@ -5,20 +5,12 @@ Comment for part b
 */
 
 import (
-	"fmt"
-	"time"
 	"Math/rand"
+	"fmt"
 	"strconv"
+	"time"
 )
 
-/*
---- Task ---
-Dentist will check that there are no high-prioirty patients before starting on a low priorty one
-Need to account for starvation: use aging technique
-Move a patient from lwait to hwait whenever m milliseconds have passed since the last read
- from lwait
-
-*/
 func dentist(hwait chan chan int, lwait <-chan chan int, dent <-chan chan int) {
 	highQueue := make(chan chan int, 10)
 	lowQueue := make(chan chan int, 10)
@@ -26,56 +18,68 @@ func dentist(hwait chan chan int, lwait <-chan chan int, dent <-chan chan int) {
 	// Add people into their corresponding queue
 	go func() {
 		for {
-			timer := time.NewTimer(200 * time.Millisecond)
-
 			select {
 			case highPatient := <-hwait:
 				highQueue <- highPatient
-				
-			case <-timer.C:
-				select {
-				case lowPatient := <-lwait:
-					lowQueue <- lowPatient
-				default:
-					wakeMeUpPatient := <- dent // Dentist to fall asleep
-					wakeMeUpPatient <- -200
-				}
+			case lowPatient := <-lwait:
+				lowQueue <- lowPatient
+			default:
+				wakeMeUpPatient := <-dent // Dentist to fall asleep
+				wakeMeUpPatient <- -200   // Send awake confirmation
 			}
 		}
 	}()
 
-	// Treat them!
+	// Treatment Routine
 	go func() {
+		// Every 8 seconds, treat a low patient to prevent starvation
+		duration := 8 * time.Second
+		lowTimer := time.NewTimer(duration)
+
+		patientChan := make(chan int)
 		for {
-			patientChan:= make (chan chan int)
-
 			select {
-			case patientChan = <- highQueue:
-				patientChan <- -100
-			default patientChan = <- lowQueue:
-				patientChan <- - 100
-			} 	
+			// Set priority for the timer to be chosen when it has run out
+			case <-lowTimer.C:
+				fmt.Println("--- Dentist choosing Low due to timeout ---")
+				patientChan = <-lowQueue
+				patientChan <- -101
+				lowTimer.Reset(duration) // Restart the timer
+			default:
+				// Then normally, prefer highQueue patients over lowQueue patients
+				select {
+				case patientChan = <-highQueue:
+					fmt.Println("--- Emergency ---")
+					patientChan <- -101
+				default:
+					fmt.Println("--- Regular ---")
+					patientChan = <-lowQueue
+					patientChan <- -101
+				}
+			}
 
+			// Treat the patient (go to sleep) and send them a wake up signal
 			treatmentTime := rand.Intn(6-1) + 1
 			time.Sleep(time.Duration(treatmentTime) * time.Second)
-			patientChan <- -101
+			patientChan <- -100
 		}
 	}()
 }
 
-// Patient must also work for Q1
+// See Part 1
 func patient(wait chan<- chan int, dent chan<- chan int, id int) {
 	self := make(chan int)
-	dent <- self // wake up the dentist if they were asleep
-	<-self       // Accept confirmation that dentist is awake
+	dent <- self
+	<-self
 
-	wait <- self // Hey, I'd like to be treated
+	wait <- self
+	fmt.Println("Patient " + strconv.Itoa(id) + ": waiting")
 	go func() {
 		for sleepMessage := range self {
-			fmt.Println("Patient " + strconv.Itoa(id) + " about to be treated")
+			fmt.Println("  Patient " + strconv.Itoa(id) + ": getting treatment")
 			if sleepMessage == -101 {
 				<-self
-				fmt.Println("   Patient " + strconv.Itoa(id) + " done\n")
+				fmt.Println("    Patient " + strconv.Itoa(id) + ": done\n")
 			}
 		}
 	}()
@@ -85,6 +89,7 @@ func main() {
 	dent := make(chan chan int)
 	hwait := make(chan chan int, 100)
 	lwait := make(chan chan int, 5)
+
 	go dentist(hwait, lwait, dent)
 	high := 10
 	low := 3
