@@ -29,7 +29,7 @@ func dentist(wait <-chan chan int, dent <-chan chan int) {
 		// Every patient coming in, send them a sleep signal, wait, wake them up
 		for patient := range admissionQueue {
 			patient <- -101
-			treatmentTime := rand.Intn(6-1) + 1
+			treatmentTime := rand.Intn(5) + 1
 			fmt.Println("Dentist is busy for " + strconv.Itoa(treatmentTime) + " seconds")
 			time.Sleep(time.Duration(treatmentTime) * time.Second)
 			patient <- -100
@@ -62,7 +62,6 @@ func main() {
 	n, m := 5, 5
 	dent := make(chan chan int)    // creates a synchronous channel
 	wait := make(chan chan int, n) // creates an asynchronous
-	comms := make(chan string, 50) // creates an asynchronous logging channel
 
 	go func() {
 		for message := range comms {
