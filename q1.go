@@ -1,22 +1,24 @@
 package main
 
 import (
+	"Math/rand"
 	"fmt"
-	"math/rand"
 	"strconv"
 	"time"
 )
 
-func dentist(wait <-chan chan int, dent <-chan chan int, comms chan<- string) {
+func dentist(wait <-chan chan int, dent <-chan chan int) {
 	admissionQueue := make(chan chan int, 5)
 
 	go func() {
 		for {
+			// Add patients to the queue
 			select {
 			case patient := <-wait:
 				admissionQueue <- patient
-				break
 			default:
+				/* Sleep until we receive a wakeup and confirm that we received it
+				As per Brief */
 				wakeMeUpPatient := <-dent
 				wakeMeUpPatient <- -200
 			}
@@ -24,28 +26,33 @@ func dentist(wait <-chan chan int, dent <-chan chan int, comms chan<- string) {
 	}()
 
 	go func() {
+		// Every patient coming in, send them a sleep signal, wait, wake them up
 		for patient := range admissionQueue {
 			patient <- -101
 			treatmentTime := rand.Intn(6-1) + 1
-			comms <- "Dentist: Treating a patient for " + strconv.Itoa(treatmentTime) + " seconds"
+			fmt.Println("Dentist is busy for " + strconv.Itoa(treatmentTime) + " seconds")
 			time.Sleep(time.Duration(treatmentTime) * time.Second)
 			patient <- -100
 		}
 	}()
 }
 
-func patient(wait chan<- chan int, dent chan<- chan int, id int, comms chan<- string) {
+func patient(wait chan<- chan int, dent chan<- chan int, id int) {
 	self := make(chan int)
-	dent <- self // wake up the dentist if they were asleep
-	<-self       // Accept confirmation that dentist is awake
+	// Wake up dentist and receive confirmation message
+	dent <- self
+	<-self
 
-	wait <- self // Hey, I'd like to be treated
+	// Add myself to queue
+	wait <- self
+	fmt.Println("Patient " + strconv.Itoa(id) + ": waiting")
 	go func() {
+		// Stay in a waiting state until we receive a treatment start signal
 		for sleepMessage := range self {
-			fmt.Println("Patient " + strconv.Itoa(id) + " about to be treated")
+			fmt.Println("  Patient " + strconv.Itoa(id) + ": getting treatment")
 			if sleepMessage == -101 {
-				<-self
-				fmt.Println("   Patient " + strconv.Itoa(id) + " done\n")
+				<-self // And wait until we are woken up
+				fmt.Println("    Patient " + strconv.Itoa(id) + ": done\n")
 			}
 		}
 	}()
@@ -64,13 +71,13 @@ func main() {
 	}()
 
 	// channel of size n
-	go dentist(wait, dent, comms)
+	go dentist(wait, dent)
 	time.Sleep(3 * time.Second)
-	comms <- strconv.Itoa(m) + " patients"
+	fmt.Println(strconv.Itoa(m) + " patients")
 	for i := 0; i < m; i++ {
-		go patient(wait, dent, i, comms)
+		go patient(wait, dent, i)
 		time.Sleep(1 * time.Second)
 	}
-	comms <- "Main: Everything initialised"
-	time.Sleep(20 * time.Second)
+	time.Sleep(30 * time.Second)
+	comms <- "Done"
 }
