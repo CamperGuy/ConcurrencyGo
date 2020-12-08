@@ -1,7 +1,9 @@
 package main
 
 /*
-Comment for part b
+Assume Go does not have fair semantics
+Where could Starvation occur in Part 1?
+Justify answer.
 */
 
 import (
@@ -88,7 +90,7 @@ func patient(wait chan<- chan int, dent chan<- chan int, id int) {
 func main() {
 	dent := make(chan chan int)
 	hwait := make(chan chan int, 100)
-	lwait := make(chan chan int, 5)
+	lwait := make(chan chan int, 100)
 
 	go dentist(hwait, lwait, dent)
 	high := 10
