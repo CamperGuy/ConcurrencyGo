@@ -15,27 +15,34 @@ import (
 func assistant(hwait chan chan int, lwait <-chan chan int, wait chan<- chan int, dent chan chan int) {
 	duration := 8 * time.Second
 	lowTimer := time.NewTimer(duration)
-	for {
-		select {
-		case <-lowTimer.C:
-			patient := <-lwait
-			wait <- patient
-			lowTimer.Reset(duration)
-		default:
+	go func() {
+		for {
 			select {
-			case patient := <-hwait:
-				wait <- patient
-			default:
+			case <-lowTimer.C:
+				fmt.Println("Assistant timer up")
 				patient := <-lwait
 				wait <- patient
+				lowTimer.Reset(duration)
+			default:
+				fmt.Println("Assitant to choose")
+				select {
+				case highPatient := <-hwait:
+					fmt.Println("Assistant hwait")
+					wait <- highPatient
+				default:
+					fmt.Println("Assistant default")
+					patient := <-lwait
+					wait <- patient
+				}
 			}
 		}
-	}
+	}()
 }
 
 func dentist(wait chan chan int, dent <-chan chan int) {
 	for {
 		waitingPatient := <-dent
+		fmt.Println("Dentist next step")
 		waitingPatient <- -200
 		patient := <-wait
 		patient <- -101
@@ -45,7 +52,6 @@ func dentist(wait chan chan int, dent <-chan chan int) {
 	}
 }
 
-// See Part 1
 func patient(wait chan<- chan int, dent chan<- chan int, id int) {
 	self := make(chan int)
 	dent <- self
@@ -67,7 +73,7 @@ func main() {
 	dent := make(chan chan int)
 	hwait := make(chan chan int, 100)
 	lwait := make(chan chan int, 100)
-	wait := make(chan chan int, 200)
+	wait := make(chan chan int)
 
 	go dentist(wait, dent)
 	go assistant(hwait, lwait, wait, dent)
