@@ -13,14 +13,17 @@ In Part 3 the Dentist would not deadlock as this would not be possible
 */
 
 /*
-	Math/rand, depending on your version of Go might need to be lowercase
+	Math/rand, depending on your installation of Go might need to be lowercase
 	I found this:
-	Unix: Uppercase
-	Windows: Lowercase
+	macOS under Go 1.15.5: Uppercase
+		Installed via Homebrew
+	Windows under Go 1.15.5: Lowercase
+		Installed via provided installer
+	Please adjust for your system as required. I could not find a universal work-around
 */
 import (
+	"Math/rand"
 	"fmt"
-	"math/rand"
 	"strconv"
 	"time"
 )

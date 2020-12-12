@@ -1,5 +1,14 @@
 package main
 
+/*
+	Math/rand, depending on your installation of Go might need to be lowercase
+	I found this:
+	macOS under Go 1.15.5: Uppercase
+		Installed via Homebrew
+	Windows under Go 1.15.5: Lowercase
+		Installed via provided installer
+	Please adjust for your system as required. I could not find a universal work-around
+*/
 import (
 	"Math/rand"
 	"fmt"
