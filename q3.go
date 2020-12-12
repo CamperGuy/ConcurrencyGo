@@ -8,10 +8,16 @@ The dentist in Part 2 could deadlock when Line 50 is chosen.
 	The timer would run out and looking for a low priority patient.
 	If there is no low priority patient present, but only a high
 	priority patient, the dentist would deadlock.
-In Part 3 the Dentist would not deadlock as this possibility would
-	only occur in the Assistant
+In Part 3 the Dentist would not deadlock as this would not be possible
+	The assistant now also just keeps cycling when either waiting rooms are empty
 */
 
+/*
+	Math/rand, depending on your version of Go might need to be lowercase
+	I found this:
+	Unix: Uppercase
+	Windows: Lowercase
+*/
 import (
 	"fmt"
 	"math/rand"
@@ -34,6 +40,7 @@ func assistant(hwait chan chan int, lwait <-chan chan int, wait chan<- chan int,
 					wait <- lowPatient
 					lowTimer.Reset(duration) // Restart the timer
 				default: // If there is a timeout and the queue is empty just keep cycling
+					lowTimer.Reset(duration)
 					continue
 				}
 			default:
