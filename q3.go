@@ -13,8 +13,8 @@ In Part 3 the Dentist would not deadlock as this possibility would
 */
 
 import (
-	"Math/rand"
 	"fmt"
+	"math/rand"
 	"strconv"
 	"time"
 )
@@ -22,24 +22,33 @@ import (
 func assistant(hwait chan chan int, lwait <-chan chan int, wait chan<- chan int, dent chan chan int) {
 	duration := 8 * time.Second
 	lowTimer := time.NewTimer(duration)
+
 	go func() {
 		for {
 			select {
+			// Set priority for the timer to be chosen when it has run out
 			case <-lowTimer.C:
-				fmt.Println("Assistant timer up")
-				patient := <-lwait
-				wait <- patient
-				lowTimer.Reset(duration)
+				select {
+				case lowPatient := <-lwait:
+					fmt.Println("Assistant: Timeout -> Low Priority Patient")
+					wait <- lowPatient
+					lowTimer.Reset(duration) // Restart the timer
+				default: // If there is a timeout and the queue is empty just keep cycling
+					continue
+				}
 			default:
-				fmt.Println("Assitant to choose")
 				select {
 				case highPatient := <-hwait:
-					fmt.Println("Assistant hwait")
+					fmt.Println("Assistant: High Priority Patient")
 					wait <- highPatient
 				default:
-					fmt.Println("Assistant default")
-					patient := <-lwait
-					wait <- patient
+					select {
+					case lowPatient := <-lwait:
+						fmt.Println("Assistant: Low Priority Patient")
+						wait <- lowPatient
+					default: // If the queue is empty just keep cycling
+						continue
+					}
 				}
 			}
 		}
@@ -49,11 +58,11 @@ func assistant(hwait chan chan int, lwait <-chan chan int, wait chan<- chan int,
 func dentist(wait chan chan int, dent <-chan chan int) {
 	for {
 		waitingPatient := <-dent
-		fmt.Println("Dentist next step")
 		waitingPatient <- -200
 		patient := <-wait
 		patient <- -101
 		treatmentTime := rand.Intn(6-1) + 1
+		fmt.Println("Dentist: Treating patient for " + strconv.Itoa(treatmentTime) + " seconds\n")
 		time.Sleep(time.Duration(treatmentTime) * time.Second)
 		patient <- -100
 	}
@@ -67,10 +76,10 @@ func patient(wait chan<- chan int, dent chan<- chan int, id int) {
 	fmt.Println("Patient " + strconv.Itoa(id) + ": waiting")
 	go func() {
 		for sleepMessage := range self {
-			fmt.Println("  Patient " + strconv.Itoa(id) + ": getting treatment")
+			fmt.Println("Patient " + strconv.Itoa(id) + ": getting treatment")
 			if sleepMessage == -101 {
 				<-self
-				fmt.Println("    Patient " + strconv.Itoa(id) + ": done\n")
+				fmt.Println("Patient " + strconv.Itoa(id) + ": done")
 			}
 		}
 	}()
