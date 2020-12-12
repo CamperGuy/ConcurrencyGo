@@ -3,6 +3,13 @@ package main
 /*
 Identify a possibility of deadlock that affects part 2 but not part 3?
 Justify
+
+The dentist in Part 2 could deadlock when Line 50 is chosen.
+	The timer would run out and looking for a low priority patient.
+	If there is no low priority patient present, but only a high
+	priority patient, the dentist would deadlock.
+In Part 3 the Dentist would not deadlock as this possibility would
+	only occur in the Assistant
 */
 
 import (
