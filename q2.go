@@ -4,6 +4,11 @@ package main
 Assume Go does not have fair semantics
 Where could Starvation occur in Part 1?
 Justify answer.
+
+With my implementation I it is not dependent on whether Go has fair semantics or not
+Every choice that is to be made has conditionals associated with it.
+Therefore it does not matter whether or not Go has has fair semantics and no starvation
+could occur.
 */
 
 import (
