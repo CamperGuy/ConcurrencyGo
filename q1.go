@@ -63,12 +63,6 @@ func main() {
 	dent := make(chan chan int)    // creates a synchronous channel
 	wait := make(chan chan int, n) // creates an asynchronous
 
-	go func() {
-		for message := range comms {
-			fmt.Println(message)
-		}
-	}()
-
 	// channel of size n
 	go dentist(wait, dent)
 	time.Sleep(3 * time.Second)
@@ -78,5 +72,4 @@ func main() {
 		time.Sleep(1 * time.Second)
 	}
 	time.Sleep(30 * time.Second)
-	comms <- "Done"
 }
